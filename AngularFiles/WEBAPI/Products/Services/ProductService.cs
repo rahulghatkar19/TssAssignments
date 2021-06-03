@@ -81,15 +81,19 @@ namespace Products.Services
 
         public async Task<List<string>> checkQuantity(addedProduct[] addedToCart)
         {
+            List<ProductDB> products = new List<ProductDB>();
+            products = await GetAllProducts();
+
             //Products.ForEach(x => avl.Add(x.product_availableQuantity));
-      
+
             for (int i = 0; i < addedToCart.Length; i++)
             {
-                List<ProductDB> products = new List<ProductDB>();
-                products = await GetAllProducts();
-                var k = products.FindIndex(x=>x.ProductId==addedToCart[i].productId);
+                /*List<ProductDB> products = new List<ProductDB>();
+                products = await GetAllProducts();*/
+                var k = products.FindIndex(x => x.ProductId == addedToCart[i].productId);
+
                 Debug.WriteLine(k);
-                if(addedToCart[i].productaddedQuantity>products[k].ProductavailableQuantity)
+                if(addedToCart[i].productaddedQuantity > products[k].ProductavailableQuantity)
                 {
                     Debug.WriteLine("Insufficient");
                     msg.Add("Insufficient");
@@ -98,14 +102,35 @@ namespace Products.Services
                     msg.Add("View Cart");
                     return msg;
                 }
+                else
+                {
+                    var updateSql = _context.Products.SingleOrDefault(p => p.ProductId == addedToCart[i].productId);
+                    if (updateSql != null)
+                    {
+                        updateSql.ProductavailableQuantity = updateSql.ProductavailableQuantity - addedToCart[i].productaddedQuantity;
+                    }
+                }
             }
 
             var client = _clientFactory.CreateClient();
             var response = await client.GetStringAsync("https://localhost:44356/payment");
             bool paymentStatus = JsonConvert.DeserializeObject<bool>(response);
-            
-            if(paymentStatus)
+
+            if (paymentStatus)
             {
+                _context.SaveChanges();//saved a loop
+
+                var removeProduct = from p in _context.Products
+                                 where p.ProductavailableQuantity == 0
+                                 select p;
+
+                foreach (var p in removeProduct.ToList())//can this cause performance issues in a huge data set
+                {
+                    _context.Products.Remove(p);
+                    _context.SaveChanges();
+                }
+
+
                 Debug.WriteLine("Payment Succ");
                 msg.Add("Success");
                 msg.Add("Thank You!");

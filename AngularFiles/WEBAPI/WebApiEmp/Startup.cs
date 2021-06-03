@@ -16,6 +16,7 @@ using Products.Services;
 using Products.Model;
 using Microsoft.EntityFrameworkCore;
 using Payment.Services;
+using Serilog;
 
 namespace WebApiEmp
 {
@@ -63,6 +64,8 @@ namespace WebApiEmp
             }
 
             app.UseHttpsRedirection();
+
+            app.UseSerilogRequestLogging();
 
             app.UseRouting();
 
